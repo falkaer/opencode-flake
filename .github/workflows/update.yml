@@ -1,0 +1,86 @@
+name: update
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: opencode version to update to, defaults to latest release
+        required: false
+        type: string
+
+concurrency:
+  group: update
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.update.outputs.changed }}
+      version: ${{ steps.update.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+      - id: update
+        run: |
+          ./update.sh ${{ inputs.version }}
+          if git diff --quiet -- flake.nix; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "version=$(sed -n 's/^      version = "\(.*\)";$/\1/p' flake.nix)" >> "$GITHUB_OUTPUT"
+      - if: steps.update.outputs.changed == 'true'
+        run: nix flake check --all-systems --no-build
+      - if: steps.update.outputs.changed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: flake
+          path: flake.nix
+          if-no-files-found: error
+
+  build:
+    needs: update
+    if: needs.update.outputs.changed == 'true'
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - system: x86_64-linux
+            runner: ubuntu-latest
+          - system: aarch64-linux
+            runner: ubuntu-24.04-arm
+          - system: aarch64-darwin
+            runner: macos-latest
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: flake
+      - uses: DeterminateSystems/nix-installer-action@main
+      - run: nix build --print-build-logs .#packages.${{ matrix.system }}.opencode
+      - run: ./result/bin/opencode --version
+
+  commit:
+    needs:
+      - update
+      - build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: flake
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add flake.nix
+          git commit -m "opencode: ${{ needs.update.outputs.version }}"
+          git tag "v${{ needs.update.outputs.version }}"
+          git push --follow-tags origin HEAD
