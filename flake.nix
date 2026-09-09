@@ -82,9 +82,16 @@
           '';
 
           postInstall = lib.optionalString (stdenv.buildPlatform.canExecute stdenv.hostPlatform) ''
+            ${lib.optionalString stdenv.hostPlatform.isLinux ''
+              # autoPatchelfHook only runs in fixupPhase, but we need to execute the
+              # binary here; the sandbox has no /lib/ld-linux-*.so.
+              autoPatchelf $out/bin
+            ''}
+            $out/bin/opencode completion > completions.bash
+            SHELL=/bin/zsh $out/bin/opencode completion > completions.zsh
             installShellCompletion --cmd opencode \
-              --bash <($out/bin/opencode completion) \
-              --zsh <(SHELL=/bin/zsh $out/bin/opencode completion)
+              --bash completions.bash \
+              --zsh completions.zsh
           '';
 
           nativeInstallCheckInputs = [
