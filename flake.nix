@@ -8,20 +8,20 @@
   outputs =
     { self, nixpkgs, ... }:
     let
-      version = "1.19.5";
+      version = "1.19.6";
 
       sources = {
         x86_64-linux = {
           asset = "opencode-linux-x64.tar.gz";
-          hash = "sha256-WIMQozb6O53zaz8CJbJvZ51FPvqtDPPWbDZR7z7BZHo=";
+          hash = "sha256-R3NOCJaLMMwioL/7bZ/u7XatSqdDIToSEiBAOS0JoFc=";
         };
         aarch64-linux = {
           asset = "opencode-linux-arm64.tar.gz";
-          hash = "sha256-+uW+Ji1pO3xeVihWzEc+WedBdyk22wwGAKwNXtW9CIs=";
+          hash = "sha256-W2jB9MXnW0E05mTMjzbWNNZCCNT8/lvPO0i6tpnC26w=";
         };
         aarch64-darwin = {
           asset = "opencode-darwin-arm64.zip";
-          hash = "sha256-wcnmJSEZIZLvTD7RNVraIUQFW922FoIhfpl7A8VSA8E=";
+          hash = "sha256-wL4/NN3i/csxslEg8wPG7VtpuCjxbl4Pvs/yGogq3aE=";
         };
       };
 
